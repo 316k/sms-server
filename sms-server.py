@@ -1,12 +1,41 @@
 import android
 import time
+from datetime import datetime
+from urllib import request
+from parsehtml import strip_tags
 
 droid = android.Android()
-
 methods = []
 
 class services():
     """Available services are defined here"""
+    def ts(arg):
+        """Returns the current timestamp"""
+        return str(int(time.time()))
+
+    def ping(arg):
+        """Tells the time at which the message was received"""
+        return "Message received at " + str(datetime.now().hour) + 'h' + str(datetime.now().minute) + 'm' + str(datetime.now().second) + '.' + str(datetime.now().microsecond) + 's'
+
+    def wifi(arg):
+        """Tells if the Wifi is enabled or not"""
+        return "Enabled" if droid.checkWifiState().result else "Disabled"
+
+    def battery(arg):
+        """Returns the phone's battery level"""
+        droid.batteryStartMonitoring()
+        time.sleep(1)
+        droid.batteryStopMonitoring()
+        return str(droid.batteryGetLevel().result) + " %"
+
+    def _wiki(page):
+        """Returns the first 500 characters of an english wikipedia page (not currently working)"""
+        page = request.urlopen("https://en.m.wikipedia.org/wiki/" + page)
+        lines = page.readlines()
+        text = ''.join([i.decode("utf-8").strip() for i in lines])
+        content = strip_tags(text).strip()[:300]
+        print(content)
+        return content
 
     def reverse(s):
         """Reverses the input"""
@@ -27,11 +56,10 @@ class services():
         """Displays help about this script"""
         if arg in methods:
             return eval("services." + arg + ".__doc__")
-
-        return "SmsBot help\n-------\nAvailable services : " + str(methods) + "\n\nSend '!service args' to run a service or '!help service' for help with a specific service"
+        return "*SmsBot help* Available services : " + str(methods)
 
 # Already parsed messages
-parsed_messages = set()
+parsed_messages = []
 
 # Available methods
 methods = [method for method in dir(services) if not method.startswith('_')]
@@ -44,14 +72,16 @@ while True:
             # Ignore previously parsed messages
             continue
 
-        parsed_messages.add(sms["_id"])
+        parsed_messages.append(sms["_id"])
         txt = sms["body"].split(' ')
 
         command = txt[0][1:]
         if txt[0][0] == '!' and command in methods:
             args = ' '.join(txt[1:])
             out = eval("services." + command + "(" + repr(args) + ")")
-            droid.smsSend(sms["address"], out)
-            droid.vibrate(1000)
 
-    time.sleep(10)
+            if out:
+                droid.smsSend(sms["address"], out)
+                droid.vibrate()
+
+    time.sleep(1)
