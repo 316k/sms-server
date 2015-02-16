@@ -39,10 +39,7 @@ class services():
 
     def reverse(s):
         """Reverses the input"""
-        out = ""
-        for letter in s:
-            out = letter + out
-        return out
+        return s[::-1]
 
     def hello(name):
         """Says hello to the given name"""
